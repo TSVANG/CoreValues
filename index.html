@@ -80,6 +80,16 @@
             .game-btn { padding: 0.5rem 0.5rem !important; font-size: 0.8rem !important; }
         }
 
+        /* Анимация подсказки корзины */
+        @keyframes highlightPulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); border-color: #ef4444; color: #ef4444; }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); border-color: #ef4444; color: #ef4444; }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); border-color: #ef4444; color: #ef4444; }
+        }
+        .pulse-trash {
+            animation: highlightPulse 1.5s infinite;
+        }
+
         .modal {
             position: fixed; inset: 0; z-index: 100;
             display: none; justify-content: center; align-items: center;
@@ -129,11 +139,11 @@
             <div class="flex items-center gap-2">
                 <!-- Кнопка Каталога Игр (Обновленная) -->
                 <button id="games-btn" class="h-9 px-3 bg-indigo-100 rounded-full flex items-center justify-center shadow text-indigo-600 hover:bg-indigo-200 transition-colors gap-1.5 border border-indigo-200">
-                    <i class="fas fa-gamepad text-sm"></i> <span class="text-xs font-bold uppercase tracking-wide">Игры</span>
+                    <i class="fas fa-gamepad text-sm"></i> <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wide">Ещё игры</span>
                 </button>
                 <!-- Корзина -->
-                <button onclick="toggleTrashModal()" class="relative group p-1">
-                    <div class="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow text-slate-500 hover:text-red-500 border border-slate-100">
+                <button onclick="toggleTrashModal()" class="relative group p-1" id="trashButtonContainer">
+                    <div id="trashBtnIcon" class="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow text-slate-500 hover:text-red-500 border border-slate-100 transition-colors">
                         <i class="fas fa-trash-alt text-sm"></i>
                     </div>
                     <span id="trashCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full transform scale-0 transition-transform duration-200">0</span>
@@ -205,7 +215,7 @@ const rawCategories = {
             if (window.vkBridge) {
                 vkBridge.send("VKWebAppInit").then(() => {
                     // Вызов мобильного баннера ВКонтакте
-                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(console.error);
+                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => console.log("Banner not supported here"));
                     
                     vkBridge.send("VKWebAppStorageGet", { keys: ["saveData10Val"] }).then((data) => {
                         if (data.keys && data.keys[0].value) {
@@ -227,7 +237,7 @@ const rawCategories = {
             }, { passive: false });
         };
 
-        // --- СОХРАНЕНИЯ В ОБЛАКО VK (Ультра-сжатие) ---
+        // --- СОХРАНЕНИЯ В ОБЛАКО VK ---
         function saveProgress() {
             if (!window.vkBridge || gameState.stage === 'intro') return;
             const compactSave = {
@@ -240,19 +250,26 @@ const rawCategories = {
             vkBridge.send("VKWebAppStorageSet", {
                 key: "saveData10Val",
                 value: JSON.stringify(compactSave)
-            }).catch(console.error);
+            }).catch(e => console.log("Storage not supported here"));
         }
 
-        // --- ЗАПРОС УВЕДОМЛЕНИЙ ---
-        function requestNotificationsAnd(callback) {
+        // --- ЗАПРОС УВЕДОМЛЕНИЙ (ОДИН РАЗ) ---
+        function askNotificationsOnce(callback) {
+            // Проверяем, запрашивали ли уже для этого пользователя локально
+            if (localStorage.getItem('core_values_notif_asked')) {
+                callback();
+                return;
+            }
+
             if (window.vkBridge) {
                 vkBridge.send('VKWebAppAllowNotifications')
                     .then((data) => {
-                        console.log("Push Notification Result:", data);
+                        localStorage.setItem('core_values_notif_asked', 'true');
                         callback();
                     })
                     .catch((err) => {
-                        console.error("Push Notification Error (Check App Settings in VK Dev Console!):", err);
+                        // Даже если ошибка или отказ, помечаем, чтобы не спамить
+                        localStorage.setItem('core_values_notif_asked', 'true');
                         callback(); 
                     });
             } else {
@@ -279,6 +296,11 @@ const rawCategories = {
             gameState.semifinal1_ids = [];
             gameState.semifinal2_ids = [];
             generateValues();
+            
+            // Сброс иконки корзины
+            const trashIcon = document.getElementById('trashBtnIcon');
+            if(trashIcon) trashIcon.classList.remove('pulse-trash');
+            
             renderIntro();
             updateTrashBadge();
         }
@@ -347,7 +369,9 @@ const rawCategories = {
             const progressText = document.getElementById('progressText');
             const progressBar = document.getElementById('progressBar');
             const nextBtn = document.getElementById('nextBtn');
-            if (!progressText || !progressBar || !nextBtn) return;
+            const trashIcon = document.getElementById('trashBtnIcon');
+            
+            if (!progressText || !nextBtn) return;
 
             if (gameState.stage === 'filtering') {
                 const catName = gameState.categoryKeys[gameState.currentCategoryIndex];
@@ -359,9 +383,11 @@ const rawCategories = {
                 const percentComplete = Math.min(100, (trashedCount / targetTrash) * 100);
 
                 progressText.textContent = `Убрано: ${trashedCount}/${targetTrash}`;
-                progressText.parentElement.className = `text-[10px] sm:text-xs font-bold ${isTargetMet ? 'text-green-600' : 'text-orange-500'}`;
-                progressBar.style.width = `${percentComplete}%`;
-                progressBar.className = `h-full transition-all ${isTargetMet ? 'bg-green-500' : 'bg-orange-400'}`;
+                progressText.className = `text-[10px] sm:text-xs font-bold ${isTargetMet ? 'text-green-600' : 'text-orange-500'}`;
+                if(progressBar) {
+                    progressBar.style.width = `${percentComplete}%`;
+                    progressBar.className = `h-full transition-all ${isTargetMet ? 'bg-green-500' : 'bg-orange-400'}`;
+                }
                 
                 if(isTargetMet) {
                     nextBtn.disabled = false;
@@ -382,9 +408,11 @@ const rawCategories = {
                 const percentComplete = Math.min(100, (trashedCount / targetTrash) * 100);
 
                 progressText.textContent = `Убрано: ${trashedCount}/${targetTrash}`;
-                progressText.parentElement.className = `text-[10px] sm:text-xs font-bold ${isTargetMet ? 'text-green-600' : 'text-orange-500'}`;
-                progressBar.style.width = `${percentComplete}%`;
-                progressBar.className = `h-full transition-all ${isTargetMet ? 'bg-green-500' : 'bg-orange-400'}`;
+                progressText.className = `text-[10px] sm:text-xs font-bold ${isTargetMet ? 'text-green-600' : 'text-orange-500'}`;
+                if(progressBar) {
+                    progressBar.style.width = `${percentComplete}%`;
+                    progressBar.className = `h-full transition-all ${isTargetMet ? 'bg-green-500' : 'bg-orange-400'}`;
+                }
                 
                 if(isTargetMet) {
                     nextBtn.disabled = false;
@@ -407,14 +435,18 @@ const rawCategories = {
                     nextBtn.disabled = false; 
                     nextBtn.className = "game-btn bg-green-500 text-white shadow-lg animate-pulse w-full max-w-sm py-2.5 rounded-xl font-bold transition-all text-sm sm:text-base"; 
                     nextBtn.textContent = 'Посмотреть результат';
+                    if(trashIcon) trashIcon.classList.remove('pulse-trash');
                 } else if (currentCount > targetRemaining) {
                     nextBtn.disabled = true;
                     nextBtn.className = "game-btn bg-slate-300 text-slate-500 w-full max-w-sm py-2.5 rounded-xl font-bold transition-all text-sm sm:text-base cursor-not-allowed"; 
                     nextBtn.textContent = `Уберите еще ${currentCount - targetRemaining}`;
+                    if(trashIcon) trashIcon.classList.remove('pulse-trash');
                 } else {
                     nextBtn.disabled = true;
                     nextBtn.className = "game-btn bg-red-400 text-white w-full max-w-sm py-2.5 rounded-xl font-bold transition-all text-sm sm:text-base cursor-not-allowed"; 
-                    nextBtn.textContent = `Верните ${targetRemaining - currentCount} из корзины`;
+                    nextBtn.textContent = `Верните ${targetRemaining - currentCount} из корзины ↗`;
+                    // Добавляем анимацию свечения корзины
+                    if(trashIcon) trashIcon.classList.add('pulse-trash');
                 }
             }
         }
@@ -435,7 +467,7 @@ const rawCategories = {
                     <div class="flex-none mb-2 px-1">
                         <div class="flex justify-between items-end mb-1 text-[10px] sm:text-xs font-bold">
                              <div class="text-indigo-400 uppercase">Категория ${gameState.currentCategoryIndex + 1}/${gameState.categoryKeys.length}</div>
-                             <div class="text-orange-500"><span id="progressText"></span></div>
+                             <div id="progressText" class="text-orange-500"></div>
                         </div>
                         <div class="h-1.5 w-full bg-gray-200 rounded-full mb-1"><div id="progressBar" class="h-full bg-orange-400 transition-all" style="width: 0%"></div></div>
                         <h2 class="text-lg sm:text-xl font-bold text-slate-800 leading-tight">${catName}</h2>
@@ -529,7 +561,7 @@ const rawCategories = {
                     <div class="flex-none mb-2 px-1">
                         <div class="flex justify-between items-end mb-1 text-[10px] sm:text-xs font-bold">
                              <div class="text-indigo-400 uppercase">Полуфинал ${isGroup1 ? '1/2' : '2/2'}</div>
-                             <div class="text-orange-500"><span id="progressText"></span></div>
+                             <div id="progressText" class="text-orange-500"></div>
                         </div>
                         <div class="h-1.5 w-full bg-gray-200 rounded-full mb-1"><div id="progressBar" class="h-full bg-orange-400 transition-all" style="width: 0%"></div></div>
                         <h2 class="text-lg sm:text-xl font-bold text-slate-800 leading-tight">Группа ${isGroup1 ? '1' : '2'}</h2>
@@ -587,12 +619,16 @@ const rawCategories = {
         function finishGame() {
             gameState.stage = 'result';
             saveProgress();
-            const top10 = gameState.values.filter(v => v.status === 'active');
             
-            // Квадратные карточки для красивого результата
+            // Берем Топ 10 и сортируем их по Категории для красивой группировки
+            let top10 = gameState.values.filter(v => v.status === 'active');
+            top10.sort((a, b) => a.category.localeCompare(b.category));
+            
+            // Карточки результата с категорией
             let listHTML = top10.map(item => `
-                <div class="flex items-center justify-center p-2 bg-white rounded-xl shadow-sm border border-slate-100 h-full">
-                    <div class="text-[11px] sm:text-xs font-bold text-slate-800 text-center break-words">${item.text}</div>
+                <div class="flex flex-col items-center justify-center p-1.5 bg-white rounded-xl shadow-sm border border-slate-100 h-full">
+                    <div class="text-[11px] sm:text-xs font-bold text-slate-800 text-center break-words leading-tight">${item.text}</div>
+                    <div class="text-[7px] sm:text-[8px] text-slate-400 uppercase tracking-widest mt-1 opacity-70 text-center">${item.category}</div>
                 </div>
             `).join('');
 
@@ -606,12 +642,11 @@ const rawCategories = {
                                 <i class="fas fa-compass"></i>
                             </div>
                             <h2 class="text-base font-bold text-indigo-900">Мои Главные Ценности</h2>
-                            <p class="text-[10px] text-slate-500">Мини-апп ВКонтакте</p>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 mt-auto mb-auto w-full h-[70%] px-1">
+                        <div class="grid grid-cols-2 gap-2 mt-auto mb-auto w-full h-[75%] px-1">
                             ${listHTML}
                         </div>
-                        <div class="shrink-0 mt-4 text-center text-[10px] font-medium text-slate-400">Узнай свои ценности!</div>
+                        <div class="shrink-0 mt-3 text-center text-[10px] font-medium text-slate-400">Узнай свои ценности!</div>
                     </div>
 
                     <!-- Кнопки действий -->
@@ -619,7 +654,7 @@ const rawCategories = {
                         <button onclick="handleSaveAndStory()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-bold shadow hover:bg-blue-600 text-sm flex items-center justify-center gap-2">
                             <i class="fab fa-vk"></i> Сохранить и Поделиться
                         </button>
-                        <button onclick="requestNotificationsAnd(startNewGame)" class="w-full bg-white text-slate-600 border border-slate-300 py-3 rounded-xl font-bold text-sm">
+                        <button onclick="startNewGame()" class="w-full bg-white text-slate-600 border border-slate-300 py-3 rounded-xl font-bold text-sm">
                             Начать заново
                         </button>
                     </div>
@@ -627,58 +662,62 @@ const rawCategories = {
             `;
             
             // Скрываем корзину в хедере на финальном экране
-            const trashBtn = document.querySelector('header button.relative.group');
+            const trashBtn = document.getElementById('trashButtonContainer');
             if(trashBtn) trashBtn.style.display = 'none';
         }
 
-        // ОБЪЕДИНЕННАЯ ФУНКЦИЯ (Сохранить + Скриншот Истории + Пуши + Каталог)
+        // ОБЪЕДИНЕННАЯ ФУНКЦИЯ (Сохранить + Запрос Пушей + Скриншот Истории + Каталог Игр)
         function handleSaveAndStory() {
             saveProgress();
             
-            const captureArea = document.getElementById('story-capture');
-            const btnArea = document.getElementById('final-buttons');
-            const header = document.querySelector('header');
-            
-            // Жестко фиксируем размеры блока, чтобы скриншот 9:16 не поплыл на разных телефонах
-            const origClass = captureArea.className;
-            captureArea.className = "p-5 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between"; 
-            captureArea.style.width = "360px";
-            captureArea.style.height = "640px";
-            
-            // Прячем лишнее
-            btnArea.style.display = "none";
-            if(header) header.style.display = "none";
-            window.scrollTo(0,0);
+            // ВОРОНКА: Сначала проверяем/спрашиваем пуши (один раз), затем идем делать историю
+            askNotificationsOnce(() => {
+                const captureArea = document.getElementById('story-capture');
+                const btnArea = document.getElementById('final-buttons');
+                const header = document.querySelector('header');
+                
+                // Жестко фиксируем размеры блока, чтобы скриншот 9:16 не поплыл на разных телефонах
+                const origClass = captureArea.className;
+                captureArea.className = "p-5 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between"; 
+                captureArea.style.width = "360px";
+                captureArea.style.height = "640px";
+                
+                // Прячем лишнее
+                btnArea.style.display = "none";
+                if(header) header.style.display = "none";
+                window.scrollTo(0,0);
 
-            html2canvas(captureArea, { scale: 2, backgroundColor: "#f8fafc" }).then(canvas => {
-                // Восстанавливаем оригинальный интерфейс
-                captureArea.className = origClass;
-                captureArea.style.width = "";
-                captureArea.style.height = "";
-                btnArea.style.display = "flex";
-                if(header) header.style.display = "flex";
-                
-                const base64image = canvas.toDataURL("image/png");
-                
-                if (window.vkBridge) {
-                    vkBridge.send("VKWebAppShowStoryBox", {
-                        background_type: "image",
-                        blob: base64image
-                    }).finally(() => {
-                        // Как только завершили или отменили Историю -> Запрос пушей -> Открываем Игры
-                        requestNotificationsAnd(() => openGamesCatalog(true));
-                    });
-                } else {
-                    requestNotificationsAnd(() => openGamesCatalog(true));
-                }
-            }).catch(e => {
-                console.error("Canvas error", e);
-                captureArea.className = origClass;
-                captureArea.style.width = "";
-                captureArea.style.height = "";
-                btnArea.style.display = "flex";
-                if(header) header.style.display = "flex";
-                requestNotificationsAnd(() => openGamesCatalog(true));
+                html2canvas(captureArea, { scale: 2, backgroundColor: "#f8fafc" }).then(canvas => {
+                    // Восстанавливаем оригинальный интерфейс
+                    captureArea.className = origClass;
+                    captureArea.style.width = "";
+                    captureArea.style.height = "";
+                    btnArea.style.display = "flex";
+                    if(header) header.style.display = "flex";
+                    
+                    const base64image = canvas.toDataURL("image/png");
+                    
+                    if (window.vkBridge) {
+                        vkBridge.send("VKWebAppShowStoryBox", {
+                            background_type: "image",
+                            blob: base64image
+                        }).finally(() => {
+                            // Как только завершили или закрыли Историю -> Открываем Игры
+                            openGamesCatalog(true);
+                        });
+                    } else {
+                        // Если это веб версия и сторис нет - просто открываем каталог
+                        openGamesCatalog(true);
+                    }
+                }).catch(e => {
+                    console.error("Canvas error", e);
+                    captureArea.className = origClass;
+                    captureArea.style.width = "";
+                    captureArea.style.height = "";
+                    btnArea.style.display = "flex";
+                    if(header) header.style.display = "flex";
+                    openGamesCatalog(true);
+                });
             });
         }
 
