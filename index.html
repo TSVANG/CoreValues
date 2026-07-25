@@ -189,7 +189,7 @@
 
     <script>
         // === ВАЖНО: УКАЖИ ID СВОЕЙ ИГРЫ ЗДЕСЬ ДЛЯ АКТИВНОЙ ССЫЛКИ В ИСТОРИЯХ ===
-        const MY_VK_APP_ID = " 54693387"; // Замени 1234567 на ID твоего приложения!
+        const MY_VK_APP_ID = "54693387"; 
         
         // --- DATA ---
         const rawCategories = {
@@ -651,7 +651,14 @@
                         <div class="grid grid-cols-2 gap-2 w-full flex-grow my-2 px-1">
                             ${listHTML}
                         </div>
-                        <div class="shrink-0 mt-2 pb-2 text-center text-[11px] font-medium text-slate-500">Узнай свои ценности!</div>
+                        
+                        <!-- Рисуем красивую кнопку ИГРАТЬ прямо на картинке для Истории -->
+                        <div class="shrink-0 mt-3 pb-3 flex justify-center w-full">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold py-3.5 px-8 rounded-full shadow-lg flex items-center justify-center gap-2 border-2 border-white/40 w-4/5 shadow-[0_10px_25px_rgba(99,102,241,0.4)]">
+                                <i class="fas fa-play-circle text-xl"></i> 
+                                <span class="tracking-widest uppercase text-sm">Играть</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Кнопки действий -->
@@ -707,7 +714,7 @@
                             background_type: "image",
                             blob: base64image,
                             attachment: {
-                                text: "play", // Текст на кнопке: Играть / Перейти
+                                text: "open", // Исправляем баг ВК со словом "Слушать". "open" = Открыть
                                 type: "url",
                                 url: "https://vk.com/app" + MY_VK_APP_ID
                             }
