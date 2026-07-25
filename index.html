@@ -137,7 +137,7 @@
                 <h1 class="text-sm sm:text-lg font-bold text-indigo-900 leading-none">Core<br>Values</h1>
             </div>
             <div class="flex items-center gap-2">
-                <!-- Кнопка Каталога Игр (Обновленная) -->
+                <!-- Кнопка Каталога Игр -->
                 <button id="games-btn" class="h-9 px-3 bg-indigo-100 rounded-full flex items-center justify-center shadow text-indigo-600 hover:bg-indigo-200 transition-colors gap-1.5 border border-indigo-200">
                     <i class="fas fa-gamepad text-sm"></i> <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wide">Ещё игры</span>
                 </button>
@@ -188,18 +188,21 @@
     </div>
 
     <script>
+        // === ВАЖНО: УКАЖИ ID СВОЕЙ ИГРЫ ЗДЕСЬ ДЛЯ АКТИВНОЙ ССЫЛКИ В ИСТОРИЯХ ===
+        const MY_VK_APP_ID = "1234567"; // Замени 1234567 на ID твоего приложения!
+        
         // --- DATA ---
-const rawCategories = {
-            "Развитие": ["Риск","Риск", "Эффективность"],
-            "Материальное": ["Риск", "Роскошь", "Собственность", "Стабильность", "Статус", "Честолюбие"],
-            "Самореализация": ["Креативность", "Лидерство", "Мастерство", "Мотивация", "Независимость", "Последовательность", "Призвание", "Профессионализм", "Руководство", "Трудолюбие", "Удовлетворенность", "Успех", "Целеустремлённость", "Энтузиазм"],
-            "Духовность": ["Толерантность", "Умиротворение", "Философия", "Этичность"],
-            "Отношения": ["Свобода", "Страсть", "Уверенность в себе", "Чувственность"],
-            "Нравственность": ["Сдержанность", "Смелость", "Спокойствие", "Уверенность","Цельность"],
-            "Радость": ["Развлечение", "Удивление", "Хобби", "Эстетичность", "Юмор"],
-            "Здоровье": ["Ухоженность", "Фитнес", "Энергичность"],
-            "Семья": ["Прощение", "Родственники","Традиции"],
-            "Мораль": ["Уважение", "Честность", "Честь", "Экологичность"]
+        const rawCategories = {
+            "Развитие": ["Анализ", "Внимательность", "Гибкость", "Дальновидность", "Делегирование", "Интеллект", "Логика", "Навыки", "Осознанность", "Привычки", "Проницательность", "Сосредоточенность","Уникальность", "Эффективность"],
+            "Материальное": ["Активы", "Амбициозность", "Бизнес", "Богатство", "Власть", "Выгода", "Деньги", "Достижение", "Законность", "Инвестиции", "Инновация", "Капитал", "Комфорт", "Конкуренция", "Обладание", "Предприимчивость", "Предпринимательство", "Престиж", "Прибыльность", "Риск", "Роскошь", "Собственность", "Стабильность", "Статус", "Честолюбие"],
+            "Самореализация": ["Автономность","Воображение", "Вызов", "Глобальность", "Знания", "Индивидуальность", "Искусность", "Исследование", "Карьера", "Качество", "Компетентность", "Креативность", "Лидерство", "Мастерство", "Мотивация", "Независимость", "Последовательность", "Призвание", "Профессионализм", "Руководство", "Трудолюбие", "Удовлетворенность", "Успех", "Целеустремлённость", "Энтузиазм"],
+            "Духовность": ["Аскетизм", "Безмятежность", "Бог", "Гармония", "Глубина", "Истина", "Лёгкость", "Любопытство", "Мудрость", "Познание", "Прозрачность", "Простота", "Смирение", "Созидание", "Сотрудничество", "Сочувствие", "Счастье", "Творчество", "Терпимость", "Тишина", "Толерантность", "Умиротворение", "Философия", "Этичность"],
+            "Отношения": ["Альтруизм", "Близость", "Верность", "Доброта", "Доверие", "Дружба", "Искренность", "Красота", "Поддержка", "Преданность", "Принятие", "Радость", "Свобода", "Страсть", "Уверенность в себе", "Чувственность"],
+            "Нравственность": ["Вежливость", "Великодушие", "Дисциплина", "Достоинство", "Зрелость", "Отвага", "Ответственность", "Решительность", "Самостоятельность", "Сдержанность", "Смелость", "Спокойствие", "Уверенность","Цельность"],
+            "Радость": ["Вдохновение", "Веселье", "Восторг", "Досуг", "Жизнерадостность", "Наслаждение", "Развлечение", "Удивление", "Хобби", "Эстетичность", "Юмор"],
+            "Здоровье": ["Активность", "Выносливость", "Естественность", "Ловкость", "Подвижность","Спорт", "Ухоженность", "Фитнес", "Энергичность"],
+            "Семья": ["Близкие", "Взаимопонимание", "Дети", "Забота","Принадлежность", "Прощение", "Родственники","Традиции"],
+            "Мораль": ["Благородность", "Правда", "Принципиальность", "Равенство", "Справедливость", "Уважение", "Честность", "Честь", "Экологичность"]
         };
 
         let gameState = {
@@ -215,7 +218,7 @@ const rawCategories = {
             if (window.vkBridge) {
                 vkBridge.send("VKWebAppInit").then(() => {
                     // Вызов мобильного баннера ВКонтакте
-                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => console.log("Banner not supported here"));
+                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => console.log("Banner info: Not shown (AdBlock, lack of settings, or desktop environment)"));
                     
                     vkBridge.send("VKWebAppStorageGet", { keys: ["saveData10Val"] }).then((data) => {
                         if (data.keys && data.keys[0].value) {
@@ -250,7 +253,7 @@ const rawCategories = {
             vkBridge.send("VKWebAppStorageSet", {
                 key: "saveData10Val",
                 value: JSON.stringify(compactSave)
-            }).catch(e => console.log("Storage not supported here"));
+            }).catch(e => console.log("Storage info: Skipping (likely dev environment)"));
         }
 
         // --- ЗАПРОС УВЕДОМЛЕНИЙ (ОДИН РАЗ) ---
@@ -269,6 +272,7 @@ const rawCategories = {
                     })
                     .catch((err) => {
                         // Даже если ошибка или отказ, помечаем, чтобы не спамить
+                        console.log("Push notifications skipped or blocked by user/environment");
                         localStorage.setItem('core_values_notif_asked', 'true');
                         callback(); 
                     });
@@ -636,17 +640,18 @@ const rawCategories = {
                 <div class="h-full flex flex-col card-enter max-w-sm mx-auto w-full overflow-hidden" id="capture-container">
                     
                     <!-- Область для генерации картинки в Историю -->
-                    <div id="story-capture" class="flex-grow custom-scroll p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 flex flex-col justify-between">
-                        <div class="text-center mb-3 mt-2 shrink-0">
+                    <!-- ИСПОЛЬЗУЕМ FLEX-GROW для умной адаптации сетки и текста -->
+                    <div id="story-capture" class="flex-grow p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 flex flex-col justify-between overflow-hidden">
+                        <div class="text-center mb-1 shrink-0 mt-2">
                             <div class="w-12 h-12 bg-indigo-100 text-indigo-500 rounded-full flex items-center justify-center text-xl mx-auto mb-2 shadow-inner">
                                 <i class="fas fa-compass"></i>
                             </div>
                             <h2 class="text-base font-bold text-indigo-900">Мои Главные Ценности</h2>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 mt-auto mb-auto w-full h-[75%] px-1">
+                        <div class="grid grid-cols-2 gap-2 w-full flex-grow my-2 px-1">
                             ${listHTML}
                         </div>
-                        <div class="shrink-0 mt-3 text-center text-[10px] font-medium text-slate-400">Узнай свои ценности!</div>
+                        <div class="shrink-0 mt-2 pb-2 text-center text-[11px] font-medium text-slate-500">Узнай свои ценности!</div>
                     </div>
 
                     <!-- Кнопки действий -->
@@ -678,7 +683,7 @@ const rawCategories = {
                 
                 // Жестко фиксируем размеры блока, чтобы скриншот 9:16 не поплыл на разных телефонах
                 const origClass = captureArea.className;
-                captureArea.className = "p-5 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between"; 
+                captureArea.className = "p-4 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between overflow-hidden"; 
                 captureArea.style.width = "360px";
                 captureArea.style.height = "640px";
                 
@@ -700,13 +705,17 @@ const rawCategories = {
                     if (window.vkBridge) {
                         vkBridge.send("VKWebAppShowStoryBox", {
                             background_type: "image",
-                            blob: base64image
+                            blob: base64image,
+                            attachment: {
+                                text: "play", // Текст на кнопке: Играть / Перейти
+                                type: "url",
+                                url: "https://vk.com/app" + MY_VK_APP_ID
+                            }
                         }).finally(() => {
                             // Как только завершили или закрыли Историю -> Открываем Игры
                             openGamesCatalog(true);
                         });
                     } else {
-                        // Если это веб версия и сторис нет - просто открываем каталог
                         openGamesCatalog(true);
                     }
                 }).catch(e => {
