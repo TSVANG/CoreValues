@@ -77,6 +77,7 @@
             .value-card { padding: 0.4rem !important; min-height: 44px !important; }
             .value-card span { font-size: 0.75rem !important; line-height: 1.1; }
             .game-btn { padding: 0.5rem 0.5rem !important; font-size: 0.8rem !important; }
+            .header-text-hide { display: none !important; } /* Скрываем текст кнопок на малых экранах */
         }
 
         /* Анимация подсказки корзины */
@@ -335,25 +336,49 @@
         let loadedState = null;
         let isPaused = false; 
 
-        // --- ИНИЦИАЛИЗАЦИЯ VK ---
+        // --- БРОНЕБОЙНАЯ ИНИЦИАЛИЗАЦИЯ VK (С таймаутом-страховкой) ---
+        let appInitialized = false;
+
+        function safeStart() {
+            if (appInitialized) return;
+            appInitialized = true;
+            startNewGame();
+        }
+
         window.onload = function() {
+            // Страховочный таймаут: если ВК не отвечает 1 секунду, запускаем игру сами
+            const initTimeout = setTimeout(() => {
+                safeStart();
+            }, 1000); 
+
             if (window.vkBridge) {
                 vkBridge.send("VKWebAppInit").then(() => {
                     vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => console.log("Banner info: Mobile only feature"));
                     
                     vkBridge.send("VKWebAppStorageGet", { keys: ["saveData10Val"] }).then((data) => {
+                        clearTimeout(initTimeout); // Отменяем таймер, ВК ответил
+                        if (appInitialized) return;
+
                         if (data.keys && data.keys[0].value) {
                             loadedState = JSON.parse(data.keys[0].value);
                             if (loadedState && loadedState.stage !== 'result') {
+                                appInitialized = true;
                                 document.getElementById('sync-modal').style.display = 'flex';
                                 return;
                             }
                         }
-                        startNewGame();
-                    }).catch(() => startNewGame());
-                }).catch(() => startNewGame());
+                        safeStart();
+                    }).catch(() => {
+                        clearTimeout(initTimeout);
+                        safeStart();
+                    });
+                }).catch(() => {
+                    clearTimeout(initTimeout);
+                    safeStart();
+                });
             } else {
-                startNewGame();
+                clearTimeout(initTimeout);
+                safeStart();
             }
 
             document.addEventListener('touchmove', function(e) { 
@@ -386,22 +411,27 @@
             }
         }
 
-        // --- ЗАПРОС УВЕДОМЛЕНИЙ (ОДИН РАЗ) ---
+        // --- ЗАПРОС УВЕДОМЛЕНИЙ (С ЗАЩИТОЙ ОТ ОШИБОК БРАУЗЕРА) ---
         function askNotificationsOnce(callback) {
-            if (localStorage.getItem('core_values_notif_asked')) {
-                callback();
-                return;
+            // Обернули работу с localStorage в try-catch для защиты от SecurityError в Safari/Chrome Iframe
+            try {
+                if (localStorage.getItem('core_values_notif_asked')) {
+                    callback();
+                    return;
+                }
+            } catch(e) {
+                console.log("LocalStorage read blocked, ignoring");
             }
 
             if (window.vkBridge) {
                 vkBridge.send('VKWebAppAllowNotifications')
                     .then((data) => {
-                        localStorage.setItem('core_values_notif_asked', 'true');
+                        try { localStorage.setItem('core_values_notif_asked', 'true'); } catch(e) {}
                         callback();
                     })
                     .catch((err) => {
                         console.log("Push notifications skipped or blocked");
-                        localStorage.setItem('core_values_notif_asked', 'true');
+                        try { localStorage.setItem('core_values_notif_asked', 'true'); } catch(e) {}
                         callback(); 
                     });
             } else {
@@ -423,8 +453,10 @@
         function startNewGame() {
             playClickSound();
             document.getElementById('sync-modal').style.display = 'none';
-            // Показываем нижние кнопки, если они были спрятаны
-            document.getElementById('bottomActions').style.display = 'flex';
+            
+            // Безопасно показываем нижние кнопки, если они были спрятаны
+            const bActions = document.getElementById('bottomActions');
+            if(bActions) bActions.style.display = 'flex';
             
             gameState.stage = 'intro';
             gameState.currentCategoryIndex = 0;
@@ -446,7 +478,10 @@
         function loadGameAndStart() {
             playClickSound();
             document.getElementById('sync-modal').style.display = 'none';
-            document.getElementById('bottomActions').style.display = 'flex';
+            
+            const bActions = document.getElementById('bottomActions');
+            if(bActions) bActions.style.display = 'flex';
+            
             generateValues();
             
             gameState.stage = loadedState.st;
@@ -776,8 +811,8 @@
                 </div>
             `).join('');
 
-            // Скрываем нижние кнопки действий, так как тут будут свои финальные
-            document.getElementById('bottomActions').style.display = 'none';
+            const bActions = document.getElementById('bottomActions');
+            if(bActions) bActions.style.display = 'none';
 
             document.getElementById('gameArea').innerHTML = `
                 <div class="h-full flex flex-col card-enter max-w-sm mx-auto w-full overflow-hidden" id="capture-container">
