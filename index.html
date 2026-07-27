@@ -77,7 +77,7 @@
             .value-card { padding: 0.4rem !important; min-height: 44px !important; }
             .value-card span { font-size: 0.75rem !important; line-height: 1.1; }
             .game-btn { padding: 0.5rem 0.5rem !important; font-size: 0.8rem !important; }
-            .header-text-hide { display: none !important; } /* Скрываем текст кнопок на малых экранах */
+            .header-text-hide { display: none !important; } 
         }
 
         /* Анимация подсказки корзины */
@@ -128,7 +128,7 @@
 <body class="text-slate-800" oncontextmenu="return false;">
 
     <div id="app" class="h-full w-full flex flex-col p-2 max-w-4xl mx-auto relative">
-        <!-- Header (Только звук, музыка и корзина) -->
+        <!-- Header -->
         <header class="flex justify-between items-center mb-2 shrink-0 z-20">
             <div class="flex items-center gap-1 sm:gap-2">
                 <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md text-sm sm:text-base shrink-0">
@@ -159,7 +159,7 @@
         <!-- Main Content Area -->
         <main id="gameArea" class="flex-grow flex flex-col relative overflow-hidden"></main>
 
-        <!-- Bottom Actions (Поделиться и Каталог Игр) -->
+        <!-- Bottom Actions -->
         <div id="bottomActions" class="flex-none flex justify-center gap-2 mt-1 z-20">
             <button onclick="shareGame()" class="flex-1 max-w-[180px] h-10 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-blue-100 transition-colors">
                 <i class="fas fa-share text-sm"></i> <span class="uppercase tracking-wide">Поделиться</span>
@@ -203,7 +203,7 @@
     </div>
 
     <script>
-        // === НАСТРОЙКИ АУДИО (ПЛЕЙЛИСТ И ЗВУКИ) ===
+        // === НАСТРОЙКИ АУДИО ===
         
         const bgmPlaylist = ['fon-1.mp3', 'fon-2.mp3'];
         let currentBgmIndex = 0;
@@ -215,28 +215,20 @@
             currentBgmIndex = (currentBgmIndex + 1) % bgmPlaylist.length;
             audioBGM.src = bgmPlaylist[currentBgmIndex];
             if (isMusicOn && !document.hidden) {
-                audioBGM.play().catch(e => console.log("BGM playlist play error:", e));
+                audioBGM.play().catch(e => console.log("BGM play error:", e));
             }
         });
 
         // SFX
-        const audioSmax1 = new Audio('smax-4.mp3');
-        audioSmax1.preload = 'auto';
-
-        const audioSmax2 = new Audio('smax-4-1.mp3');
-        audioSmax2.preload = 'auto';
-
-        const audioClick = new Audio('vozvrat-is-korsini.mp3');
-        audioClick.preload = 'auto';
-
-        const audioFinal = new Audio('final.mp3');
-        audioFinal.preload = 'auto';
+        const audioSmax1 = new Audio('smax-4.mp3'); audioSmax1.preload = 'auto';
+        const audioSmax2 = new Audio('smax-4-1.mp3'); audioSmax2.preload = 'auto';
+        const audioClick = new Audio('vozvrat-is-korsini.mp3'); audioClick.preload = 'auto';
+        const audioFinal = new Audio('final.mp3'); audioFinal.preload = 'auto';
 
         let isMusicOn = true;
         let isSoundOn = true;
         let musicStarted = false;
 
-        // Запуск фоновой музыки при первом клике
         function initAudioOnFirstClick() {
             if(!musicStarted && isMusicOn) {
                 audioBGM.play().catch(e => console.log("Autoplay prevented:", e));
@@ -248,13 +240,12 @@
         document.body.addEventListener('click', initAudioOnFirstClick);
         document.body.addEventListener('touchstart', initAudioOnFirstClick);
 
-        // Умное управление музыкой при сворачивании приложения
         document.addEventListener("visibilitychange", function() {
             if (document.hidden) {
-                audioBGM.pause(); // Ставим на паузу, если игру свернули
+                audioBGM.pause(); 
             } else {
                 if (isMusicOn && musicStarted) {
-                    audioBGM.play().catch(e => console.log("Audio resume error:", e)); // Продолжаем, если вернулись
+                    audioBGM.play().catch(e => console.log("Audio resume error:", e)); 
                 }
             }
         });
@@ -311,10 +302,8 @@
             audioFinal.play().catch(e=>{});
         }
 
-        // === ВАЖНО: УКАЖИ ID СВОЕЙ ИГРЫ ЗДЕСЬ ДЛЯ АКТИВНОЙ ССЫЛКИ В ИСТОРИЯХ ===
         const MY_VK_APP_ID = "54693387"; 
         
-        // --- DATA ---
         const rawCategories = {
             "Развитие": ["Анализ", "Внимательность", "Гибкость", "Дальновидность", "Делегирование", "Интеллект", "Логика", "Навыки", "Осознанность", "Привычки", "Проницательность", "Сосредоточенность","Уникальность", "Эффективность"],
             "Материальное": ["Активы", "Амбициозность", "Бизнес", "Богатство", "Власть", "Выгода", "Деньги", "Достижение", "Законность", "Инвестиции", "Инновация", "Капитал", "Комфорт", "Конкуренция", "Обладание", "Предприимчивость", "Предпринимательство", "Престиж", "Прибыльность", "Риск", "Роскошь", "Собственность", "Стабильность", "Статус", "Честолюбие"],
@@ -336,54 +325,47 @@
         let loadedState = null;
         let isPaused = false; 
 
-        // --- БРОНЕБОЙНАЯ ИНИЦИАЛИЗАЦИЯ VK (С таймаутом-страховкой) ---
-        let appInitialized = false;
-
-        function safeStart() {
-            if (appInitialized) return;
-            appInitialized = true;
-            startNewGame();
-        }
+        // --- УМНАЯ ИНИЦИАЛИЗАЦИЯ VK (Синхронизация без белого экрана) ---
+        let isSyncChecked = false;
 
         window.onload = function() {
-            // Страховочный таймаут: если ВК не отвечает 1 секунду, запускаем игру сами
-            const initTimeout = setTimeout(() => {
-                safeStart();
-            }, 1000); 
+            // Если ВК молчит 2 секунды, запускаем стартовое меню (но не блокируем сохранение, если оно придет позже)
+            const fallbackTimer = setTimeout(() => {
+                if (!isSyncChecked && gameState.stage === 'intro') {
+                    startNewGame();
+                }
+            }, 2000); 
 
             if (window.vkBridge) {
                 vkBridge.send("VKWebAppInit").then(() => {
-                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => console.log("Banner info: Mobile only feature"));
+                    vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => {});
                     
                     vkBridge.send("VKWebAppStorageGet", { keys: ["saveData10Val"] }).then((data) => {
-                        clearTimeout(initTimeout); // Отменяем таймер, ВК ответил
-                        if (appInitialized) return;
+                        isSyncChecked = true;
+                        clearTimeout(fallbackTimer);
 
                         if (data.keys && data.keys[0].value) {
                             loadedState = JSON.parse(data.keys[0].value);
                             if (loadedState && loadedState.stage !== 'result') {
-                                appInitialized = true;
-                                document.getElementById('sync-modal').style.display = 'flex';
+                                // Показываем окно ТОЛЬКО если игрок все еще на стартовом экране
+                                if (gameState.stage === 'intro') {
+                                    document.getElementById('sync-modal').style.display = 'flex';
+                                }
                                 return;
                             }
                         }
-                        safeStart();
+                        if (gameState.stage === 'intro') startNewGame();
                     }).catch(() => {
-                        clearTimeout(initTimeout);
-                        safeStart();
+                        isSyncChecked = true;
+                        clearTimeout(fallbackTimer);
+                        if (gameState.stage === 'intro') startNewGame();
                     });
                 }).catch(() => {
-                    clearTimeout(initTimeout);
-                    safeStart();
+                    if (gameState.stage === 'intro') startNewGame();
                 });
             } else {
-                clearTimeout(initTimeout);
-                safeStart();
+                if (gameState.stage === 'intro') startNewGame();
             }
-
-            document.addEventListener('touchmove', function(e) { 
-                if(!e.target.closest('.custom-scroll')) e.preventDefault(); 
-            }, { passive: false });
         };
 
         // --- СОХРАНЕНИЯ В ОБЛАКО VK ---
@@ -399,38 +381,32 @@
             vkBridge.send("VKWebAppStorageSet", {
                 key: "saveData10Val",
                 value: JSON.stringify(compactSave)
-            }).catch(e => console.log("Storage info: Skipping"));
+            }).catch(e => {});
         }
 
-        // --- ФУНКЦИЯ ДЛЯ КНОПКИ "ПОДЕЛИТЬСЯ" ВНИЗУ ---
         function shareGame() {
             playClickSound();
             if (window.vkBridge) {
-                vkBridge.send("VKWebAppShare", { link: "https://vk.com/app" + MY_VK_APP_ID })
-                    .catch(error => console.error("VK Share error:", error));
+                vkBridge.send("VKWebAppShare", { link: "https://vk.com/app" + MY_VK_APP_ID }).catch(e => {});
             }
         }
 
-        // --- ЗАПРОС УВЕДОМЛЕНИЙ (С ЗАЩИТОЙ ОТ ОШИБОК БРАУЗЕРА) ---
+        // Запрос уведомлений с защитой от SecurityError
         function askNotificationsOnce(callback) {
-            // Обернули работу с localStorage в try-catch для защиты от SecurityError в Safari/Chrome Iframe
             try {
                 if (localStorage.getItem('core_values_notif_asked')) {
                     callback();
                     return;
                 }
-            } catch(e) {
-                console.log("LocalStorage read blocked, ignoring");
-            }
+            } catch(e) {} // Игнорируем ошибку приватного режима/Safari
 
             if (window.vkBridge) {
                 vkBridge.send('VKWebAppAllowNotifications')
-                    .then((data) => {
+                    .then(() => {
                         try { localStorage.setItem('core_values_notif_asked', 'true'); } catch(e) {}
                         callback();
                     })
-                    .catch((err) => {
-                        console.log("Push notifications skipped or blocked");
+                    .catch(() => {
                         try { localStorage.setItem('core_values_notif_asked', 'true'); } catch(e) {}
                         callback(); 
                     });
@@ -439,7 +415,6 @@
             }
         }
 
-        // --- УПРАВЛЕНИЕ ИГРОЙ ---
         function generateValues() {
             let idCounter = 0;
             gameState.values = [];
@@ -454,7 +429,6 @@
             playClickSound();
             document.getElementById('sync-modal').style.display = 'none';
             
-            // Безопасно показываем нижние кнопки, если они были спрятаны
             const bActions = document.getElementById('bottomActions');
             if(bActions) bActions.style.display = 'flex';
             
@@ -508,7 +482,6 @@
             else startNewGame();
         }
 
-        // --- RENDERERS ---
         function renderIntro() {
             document.getElementById('gameArea').innerHTML = `
                 <div class="h-full flex flex-col items-center justify-center p-2 card-enter custom-scroll">
@@ -847,57 +820,56 @@
             if(trashBtn) trashBtn.style.display = 'none';
         }
 
+        // ВОРОНКА: СНАЧАЛА СКРИНШОТ И ИСТОРИИ, ЗАТЕМ ПУШИ И КАТАЛОГ (ЗАЩИТА ОТ БЛОКА ВК)
         function handleSaveAndStory() {
             playClickSound();
             saveProgress();
             
-            askNotificationsOnce(() => {
-                const captureArea = document.getElementById('story-capture');
-                const btnArea = document.getElementById('final-buttons');
-                const header = document.querySelector('header');
-                
-                const origClass = captureArea.className;
-                captureArea.className = "p-4 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between overflow-hidden"; 
-                captureArea.style.width = "360px";
-                captureArea.style.height = "640px";
-                
-                btnArea.style.display = "none";
-                if(header) header.style.display = "none";
-                window.scrollTo(0,0);
+            const captureArea = document.getElementById('story-capture');
+            const btnArea = document.getElementById('final-buttons');
+            const header = document.querySelector('header');
+            
+            const origClass = captureArea.className;
+            captureArea.className = "p-4 bg-gradient-to-br from-indigo-50 to-blue-50 flex flex-col justify-between overflow-hidden"; 
+            captureArea.style.width = "360px";
+            captureArea.style.height = "640px";
+            
+            btnArea.style.display = "none";
+            if(header) header.style.display = "none";
+            window.scrollTo(0,0);
 
-                html2canvas(captureArea, { scale: 2, backgroundColor: "#f8fafc" }).then(canvas => {
-                    captureArea.className = origClass;
-                    captureArea.style.width = "";
-                    captureArea.style.height = "";
-                    btnArea.style.display = "flex";
-                    if(header) header.style.display = "flex";
-                    
-                    const base64image = canvas.toDataURL("image/png");
-                    
-                    if (window.vkBridge) {
-                        vkBridge.send("VKWebAppShowStoryBox", {
-                            background_type: "image",
-                            blob: base64image,
-                            attachment: {
-                                text: "open", 
-                                type: "url",
-                                url: "https://vk.com/app" + MY_VK_APP_ID
-                            }
-                        }).finally(() => {
-                            openGamesCatalog(true);
-                        });
-                    } else {
-                        openGamesCatalog(true);
-                    }
-                }).catch(e => {
-                    console.error("Canvas error", e);
-                    captureArea.className = origClass;
-                    captureArea.style.width = "";
-                    captureArea.style.height = "";
-                    btnArea.style.display = "flex";
-                    if(header) header.style.display = "flex";
-                    openGamesCatalog(true);
-                });
+            html2canvas(captureArea, { scale: 2, backgroundColor: "#f8fafc" }).then(canvas => {
+                captureArea.className = origClass;
+                captureArea.style.width = "";
+                captureArea.style.height = "";
+                btnArea.style.display = "flex";
+                if(header) header.style.display = "flex";
+                
+                const base64image = canvas.toDataURL("image/png");
+                
+                if (window.vkBridge) {
+                    vkBridge.send("VKWebAppShowStoryBox", {
+                        background_type: "image",
+                        blob: base64image,
+                        attachment: {
+                            text: "open", 
+                            type: "url",
+                            url: "https://vk.com/app" + MY_VK_APP_ID
+                        }
+                    }).finally(() => {
+                        // После Историй запрашиваем пуши и открываем каталог
+                        askNotificationsOnce(() => openGamesCatalog(true));
+                    });
+                } else {
+                    askNotificationsOnce(() => openGamesCatalog(true));
+                }
+            }).catch(e => {
+                captureArea.className = origClass;
+                captureArea.style.width = "";
+                captureArea.style.height = "";
+                btnArea.style.display = "flex";
+                if(header) header.style.display = "flex";
+                askNotificationsOnce(() => openGamesCatalog(true));
             });
         }
 
