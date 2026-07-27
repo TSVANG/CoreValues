@@ -72,12 +72,12 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
 
-        @media (max-width: 330px) {
+        @media (max-width: 380px) {
             h1 { font-size: 0.85rem !important; }
             .value-card { padding: 0.4rem !important; min-height: 44px !important; }
             .value-card span { font-size: 0.75rem !important; line-height: 1.1; }
             .game-btn { padding: 0.5rem 0.5rem !important; font-size: 0.8rem !important; }
-            .header-text-hide { display: none !important; } /* Скрываем текст "Ещё игры" на супер узких экранах */
+            .header-text-hide { display: none !important; } /* Скрываем текст кнопок на малых экранах */
         }
 
         /* Анимация подсказки корзины */
@@ -146,6 +146,11 @@
                     <i class="fas fa-volume-up text-xs sm:text-sm"></i>
                 </button>
                 
+                <!-- Поделиться -->
+                <button onclick="shareGame()" class="h-8 sm:h-9 px-2 sm:px-3 bg-blue-50 rounded-full flex items-center justify-center shadow-sm text-blue-600 hover:bg-blue-100 transition-colors gap-1 sm:gap-1.5 border border-blue-200 shrink-0">
+                    <i class="fas fa-share text-xs sm:text-sm"></i> <span class="text-[9px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap header-text-hide">Поделиться</span>
+                </button>
+
                 <!-- Кнопка Каталога Игр -->
                 <button id="games-btn" onclick="openGamesCatalog(false)" class="h-8 sm:h-9 px-2 sm:px-3 bg-indigo-100 rounded-full flex items-center justify-center shadow text-indigo-600 hover:bg-indigo-200 transition-colors gap-1 sm:gap-1.5 border border-indigo-200 shrink-0">
                     <i class="fas fa-gamepad text-xs sm:text-sm"></i> <span class="text-[9px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap header-text-hide">Ещё игры</span>
@@ -257,7 +262,8 @@
                 btn.classList.add('text-indigo-500', 'bg-indigo-50', 'border-indigo-100');
             } else {
                 audioBGM.pause();
-                btn.innerHTML = '<i class="fas fa-music-slash text-xs sm:text-sm"></i>';
+                // Оставляем иконку фа-мьюзик, но красим в серый цвет, как со звуками (fa-music-slash нет в базовой библиотеке)
+                btn.innerHTML = '<i class="fas fa-music text-xs sm:text-sm"></i>';
                 btn.classList.remove('text-indigo-500', 'bg-indigo-50', 'border-indigo-100');
                 btn.classList.add('text-slate-400', 'bg-slate-100', 'border-slate-200');
             }
@@ -364,6 +370,15 @@
                 key: "saveData10Val",
                 value: JSON.stringify(compactSave)
             }).catch(e => console.log("Storage info: Skipping"));
+        }
+
+        // --- ФУНКЦИЯ ДЛЯ КНОПКИ "ПОДЕЛИТЬСЯ" В ШАПКЕ ---
+        function shareGame() {
+            playClickSound();
+            if (window.vkBridge) {
+                vkBridge.send("VKWebAppShare", { link: "https://vk.com/app" + MY_VK_APP_ID })
+                    .catch(error => console.error("VK Share error:", error));
+            }
         }
 
         // --- ЗАПРОС УВЕДОМЛЕНИЙ (ОДИН РАЗ) ---
