@@ -325,47 +325,31 @@
         let loadedState = null;
         let isPaused = false; 
 
-        // --- УМНАЯ ИНИЦИАЛИЗАЦИЯ VK (Синхронизация без белого экрана) ---
-        let isSyncChecked = false;
-
+        // --- УМНАЯ ИНИЦИАЛИЗАЦИЯ VK (Без задержек) ---
         window.onload = function() {
-            // Если ВК молчит 2 секунды, запускаем стартовое меню (но не блокируем сохранение, если оно придет позже)
-            const fallbackTimer = setTimeout(() => {
-                if (!isSyncChecked && gameState.stage === 'intro') {
-                    startNewGame();
-                }
-            }, 2000); 
+            // 1. Моментально показываем стартовый экран (никаких белых экранов и ожиданий!)
+            startNewGame(false); 
 
             if (window.vkBridge) {
                 vkBridge.send("VKWebAppInit").then(() => {
                     vkBridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }).catch(e => {});
                     
+                    // 2. В фоне (незаметно для игрока) проверяем сохранения
                     vkBridge.send("VKWebAppStorageGet", { keys: ["saveData10Val"] }).then((data) => {
-                        isSyncChecked = true;
-                        clearTimeout(fallbackTimer);
-
                         if (data.keys && data.keys[0].value) {
                             loadedState = JSON.parse(data.keys[0].value);
-                            if (loadedState && loadedState.stage !== 'result') {
-                                // Показываем окно ТОЛЬКО если игрок все еще на стартовом экране
-                                if (gameState.stage === 'intro') {
-                                    document.getElementById('sync-modal').style.display = 'flex';
-                                }
-                                return;
+                            // Если есть незаконченная игра и игрок всё ещё на главном экране
+                            if (loadedState && loadedState.stage !== 'result' && gameState.stage === 'intro') {
+                                document.getElementById('sync-modal').style.display = 'flex';
                             }
                         }
-                        if (gameState.stage === 'intro') startNewGame();
-                    }).catch(() => {
-                        isSyncChecked = true;
-                        clearTimeout(fallbackTimer);
-                        if (gameState.stage === 'intro') startNewGame();
-                    });
-                }).catch(() => {
-                    if (gameState.stage === 'intro') startNewGame();
-                });
-            } else {
-                if (gameState.stage === 'intro') startNewGame();
+                    }).catch(e => console.log("Storage check failed"));
+                }).catch(e => console.log("VK Init failed"));
             }
+            
+            document.addEventListener('touchmove', function(e) { 
+                if(!e.target.closest('.custom-scroll')) e.preventDefault(); 
+            }, { passive: false });
         };
 
         // --- СОХРАНЕНИЯ В ОБЛАКО VK ---
@@ -425,8 +409,8 @@
             });
         }
 
-        function startNewGame() {
-            playClickSound();
+        function startNewGame(playSound = true) {
+            if (playSound) playClickSound();
             document.getElementById('sync-modal').style.display = 'none';
             
             const bActions = document.getElementById('bottomActions');
